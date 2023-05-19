@@ -9,6 +9,10 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@types/node": "^20.1.7",
     "@types/stats.js": "^0.17.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-airbnb-typescript": "^17.0.0",
@@ -16,11 +20,17 @@
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-prettier": "^4.2.1",
     "prettier": "^2.8.8",
+    "rollup-plugin-node-polyfills": "^0.2.1",
+    "rollup-plugin-polyfill-node": "^0.12.0",
     "typescript": "^5.0.2",
-    "vite": "^4.3.2"
+    "vite": "^4.3.2",
+    "vite-plugin-node-polyfills": "^0.8.2"
   },
   "dependencies": {
+    "demofile": "^2.10.0",
     "enable3d": "^0.25.3",
-    "stats.js": "^0.17.0"
+    "https-browserify": "^1.0.0",
+    "stats.js": "^0.17.0",
+    "stream-http": "^3.2.0"
   }
 }

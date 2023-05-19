@@ -15,8 +15,10 @@
   "overrides": [],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "project": "./tsconfig.eslint.json"
+    "parser": "@typescript-eslint/parser",
+    "project": "./tsconfig.json"
   },
+  "ignorePatterns": ["vite.config.ts"],
   "plugins": ["@typescript-eslint", "import", "prettier"],
   "rules": {
     "@typescript-eslint/lines-between-class-members": "off",

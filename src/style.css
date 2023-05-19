@@ -6,6 +6,30 @@
 }
 
 body {
-  color: #1b1b1b;
+  background: #212121;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   overflow: hidden;
+}
+
+.loader {
+  display: block;
+  position: absolute;
+  margin: auto;
+  left: 0;
+  right: 0;
+  height: 40px;
+  width: 400px;
+  padding: 10px 10px;
+
+  color: #777;
+  font-weight: 500;
+  font-size: 25px;
+  text-transform: capitalize;
+}
+
+.loader .loader-container {
+  color: #55efc4;
+  transition: opacity 0.1s;
 }
