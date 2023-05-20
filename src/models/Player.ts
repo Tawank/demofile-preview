@@ -1,5 +1,5 @@
 import Entity from './Entity';
-import { MainScene } from '../main';
+import { type MainScene } from '../main';
 import type * as Plugins from '@enable3d/three-graphics/jsm/plugins';
 import {
   THREE,

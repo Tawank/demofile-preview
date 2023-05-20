@@ -1,5 +1,5 @@
 import { DemoFile, IPlayerInfo } from 'demofile';
-import { loading } from './loader';
+import { loading } from './utils/loader';
 
 export interface Replay {
   tick: number,
@@ -13,7 +13,7 @@ export interface Replay {
   },
 }
 
-export function parseDemofile(demoFileRaw: Buffer): Promise<{players: IPlayerInfo[], replay: Replay[]}> {
+export function parseDemofile(demoFileRaw: Buffer): Promise<{players: IPlayerInfo[], replay: Replay[], tickMax: number}> {
   // let resolved = false;
   return new Promise((resolve) => {
     const demoFile = new DemoFile();
@@ -64,12 +64,12 @@ export function parseDemofile(demoFileRaw: Buffer): Promise<{players: IPlayerInf
 
     demoFile.on('progress', (e) => {
       if (Math.round(e * 1000) % 10 === 0) {
-        loading(`Demo File ${(e * 100).toFixed(2)}%`);
+        loading(`Demo File ${(e * 100).toFixed(0)}%`);
       }
     });
 
     demoFile.on('end', (e) => {
-      resolve({replay, players});
+      resolve({replay, players, tickMax: replay[replay.length - 1].tick});
       console.log(`icomplete: ${e.incomplete}`);
       console.log(players);
       console.log(replay);

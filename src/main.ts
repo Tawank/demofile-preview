@@ -9,23 +9,24 @@ import {
   PointerDrag,
 } from 'enable3d';
 import ResizeableScene3D from './ResizeableScene3D';
-import { loading } from './loader';
+import { loading } from './utils/loader';
 import { Player } from './models/Player';
-import { Replay, parseDemofile } from './parseDemofile';
+import { type Replay, parseDemofile } from './parseDemofile';
 import { getRandom } from './utils/random';
-import { IPlayerInfo } from 'demofile';
+import { type IPlayerInfo } from 'demofile';
+import { tickCounterCurrentSet, tickCounterMaxSet } from './utils/tickcouter';
+import { keys } from './utils/keyboard';
 
 function createThirdPersonControls(
   camera: THREE.PerspectiveCamera | THREE.OrthographicCamera,
   target: THREE.Object3D,
-  theta?: number,
-  phi?: number,
+  oldControls?: FirstPersonControls | ThirdPersonControls,
 ) {
   return new ThirdPersonControls(camera, target, {
     offset: new THREE.Vector3(0, 1, 0),
     targetRadius: 3,
-    theta,
-    phi,
+    theta: oldControls instanceof ThirdPersonControls ? oldControls.theta : undefined,
+    phi: oldControls instanceof ThirdPersonControls ? oldControls.phi : undefined,
   });
 }
 
@@ -36,6 +37,7 @@ export class MainScene extends ResizeableScene3D {
   public focusedPlayer = 0;
 
   public tick = 0;
+  public tickMax = 0;
   public started = false;
 
   public demoPlayers: IPlayerInfo[] = [];
@@ -75,6 +77,8 @@ export class MainScene extends ResizeableScene3D {
 
     this.demoPlayers = demoFile.players.filter(demoPlayer => !demoPlayer.fakePlayer);
     this.replay = demoFile.replay;
+    this.tickMax = demoFile.tickMax;
+    tickCounterMaxSet(this.tickMax);
 
     const { lights } = await this.warpSpeed('-ground', '-orbitControls');
 
@@ -125,7 +129,7 @@ export class MainScene extends ResizeableScene3D {
     loading('Map');
     await addMap();
 
-    loading('Player');
+    loading('Players');
 
     for (const demoPlayer of this.demoPlayers) {
       const playerObject = await this.load.gltf('csgo_anti');
@@ -176,7 +180,7 @@ export class MainScene extends ResizeableScene3D {
       this.controls = createThirdPersonControls(
         this.camera,
         Object.values(this.players)[this.focusedPlayer].object3d,
-        // theta,
+        this.controls,
       );
     });
 
@@ -187,32 +191,49 @@ export class MainScene extends ResizeableScene3D {
     });
 
     addEventListener("wheel", (event) => {
-      this.controls.radius += event.deltaY;
+      this.controls.targetRadius += event.deltaY / 100;
     });
 
     loading(null);
   }
 
   update(_time: number, delta: number) {
+    const replayLength = this.replay.length - 1;
+    if (Math.round(this.tick) < 0) this.tick = replayLength;
+    else if (Math.round(this.tick) > replayLength - 1) this.tick = 0;
+    const tickRounded = Math.round(this.tick);
+
     this.controls.update(0, 0);
     Object.values(this.players).forEach((player) => player.update(delta));
+    tickCounterCurrentSet(this.replay[tickRounded].tick);
+
+    Object.entries(this.replay[tickRounded].players).forEach(([userId, player]) => {
+      if (!player || !this.players[userId]) return;
+
+      if (player.isAlive || (!player.isAlive && this.players[userId].isAlive)) {
+        this.players[userId].isAlive = player.isAlive;
+        const position = [player.position[1], player.position[2] + (player.isAlive ? 0 : -10), player.position[0]];
+        const rotation = player.isAlive ? [0, Math.PI/180 * player.rotation[1], 0] : [Math.PI / 2, 0, Math.PI/180 * player.rotation[1]];
+        this.players[userId].teleport(
+          new THREE.Vector3(...position).multiplyScalar(0.01),
+          new THREE.Euler(...rotation),
+          !player.isAlive,
+        );
+      }
+    });
 
     if (this.started) {
-      Object.entries(this.replay[Math.round(this.tick)].players).forEach(([userId, player]) => {
-        if (!player || !this.players[userId]) return;
-
-        if (player.isAlive || (!player.isAlive && this.players[userId].isAlive)) {
-          this.players[userId].isAlive = player.isAlive;
-          const position = [player.position[1], player.position[2] + (player.isAlive ? 0 : -10), player.position[0]];
-          const rotation = player.isAlive ? [0, Math.PI/180 * player.rotation[1], 0] : [Math.PI / 2, 0, Math.PI/180 * player.rotation[1]];
-          this.players[userId].teleport(
-            new THREE.Vector3(...position).multiplyScalar(0.01),
-            new THREE.Euler(...rotation),
-            !player.isAlive,
-          );
-        }
-      });
       this.tick += delta / 20;
+    }
+
+    if (keys.arrowLeft.isDown) {
+      this.tick -= delta / 2;
+    } else if (keys.arrowRight.isDown) {
+      this.tick += delta / 2;
+    } else if (keys.arrowDown.isDown) {
+      this.tick += delta * 4;
+    } else if (keys.arrowUp.isDown) {
+      this.tick -= delta * 4;
     }
   }
 }

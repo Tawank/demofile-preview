@@ -1,5 +1,9 @@
 
 export const keys = {
+  arrowLeft: { isDown: false },
+  arrowRight: { isDown: false },
+  arrowUp: { isDown: false },
+  arrowDown: { isDown: false },
   w: { isDown: false },
   a: { isDown: false },
   s: { isDown: false },
@@ -15,11 +19,17 @@ const press = (e: KeyboardEvent, isDown: boolean) => {
   e.preventDefault();
   const { code } = e;
   switch (code) {
-    case 'KeyW':
-      keys.w.isDown = isDown;
+    case 'ArrowLeft':
+      keys.arrowLeft.isDown = isDown;
+      break;
+    case 'ArrowRight':
+      keys.arrowRight.isDown = isDown;
       break;
     case 'ArrowUp':
-      keys.w.isDown = isDown;
+      keys.arrowUp.isDown = isDown;
+      break;
+    case 'ArrowDown':
+      keys.arrowDown.isDown = isDown;
       break;
     case 'Space':
       keys.space.isDown = isDown;
