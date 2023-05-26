@@ -8,27 +8,15 @@ import {
   PointerLock,
   PointerDrag,
 } from 'enable3d';
-import ResizeableScene3D from './ResizeableScene3D';
+import ResizeableScene3D from './scenes/ResizeableScene3D';
 import { loading } from './utils/loader';
 import { Player } from './models/Player';
-import { type Replay, parseDemofile } from './parseDemofile';
+import { type Replay, parseDemofile } from './utils/parseDemofile';
 import { getRandom } from './utils/random';
 import { type IPlayerInfo } from 'demofile';
 import { tickCounterCurrentSet, tickCounterMaxSet } from './utils/tickcouter';
 import { keys } from './utils/keyboard';
-
-function createThirdPersonControls(
-  camera: THREE.PerspectiveCamera | THREE.OrthographicCamera,
-  target: THREE.Object3D,
-  oldControls?: FirstPersonControls | ThirdPersonControls,
-) {
-  return new ThirdPersonControls(camera, target, {
-    offset: new THREE.Vector3(0, 1, 0),
-    targetRadius: 3,
-    theta: oldControls instanceof ThirdPersonControls ? oldControls.theta : undefined,
-    phi: oldControls instanceof ThirdPersonControls ? oldControls.phi : undefined,
-  });
-}
+import { createThirdPersonControls } from './utils/createThirdpersonControl';
 
 export class MainScene extends ResizeableScene3D {
   public controls!: FirstPersonControls | ThirdPersonControls;
@@ -51,10 +39,6 @@ export class MainScene extends ResizeableScene3D {
 
   init() {
     super.init();
-    this.renderer.setPixelRatio(Math.max(1, window.devicePixelRatio / 2));
-
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   }
 
   async preload() {
@@ -63,11 +47,17 @@ export class MainScene extends ResizeableScene3D {
       'csgo_anti',
       '/assets/glb/csgo_anti.glb',
     );
+    const csgoTerro = this.load.preload(
+      'csgo_terrorist',
+      '/assets/glb/csgo_terrorist.glb',
+    );
 
-    await Promise.all([map, csgoAnti]);
+    await Promise.all([map, csgoAnti, csgoTerro]);
   }
 
   async create() {
+    super.create();
+
     loading('Demo File');
     const demoFileFile = (await fetch(
       'assets/demos/match730_003613235383443128481_0129488978_191.dem',
@@ -79,19 +69,6 @@ export class MainScene extends ResizeableScene3D {
     this.replay = demoFile.replay;
     this.tickMax = demoFile.tickMax;
     tickCounterMaxSet(this.tickMax);
-
-    const { lights } = await this.warpSpeed('-ground', '-orbitControls');
-
-    if (!lights) throw new Error('lights not defined');
-
-    const { hemisphereLight, ambientLight, directionalLight } = lights;
-    const intensity = 0.65;
-    hemisphereLight.intensity = intensity;
-    ambientLight.intensity = intensity;
-    directionalLight.intensity = intensity;
-    directionalLight.shadow.mapSize = new THREE.Vector2(2048, 2048);
-
-    // this.physics.debug?.enable();
 
     const addMap = async () => {
       const object = await this.load.gltf('map');
@@ -132,9 +109,9 @@ export class MainScene extends ResizeableScene3D {
     loading('Players');
 
     for (const demoPlayer of this.demoPlayers) {
-      const playerObject = await this.load.gltf('csgo_anti');
+      const playerObject = await this.load.gltf(Math.random() < 0.5 ? 'csgo_anti' : 'csgo_terrorist');
 
-      this.players[demoPlayer.userId] = new Player(
+      const player = new Player(
         this,
         playerObject.scene.children[0],
         demoPlayer.name,
@@ -146,6 +123,12 @@ export class MainScene extends ResizeableScene3D {
           ),
         ),
       );
+
+      if (this.outlinePass?.selectedObjects) {
+        this.outlinePass.selectedObjects = [...this.outlinePass.selectedObjects, player.object3d.children[0]];
+      }
+
+      this.players[demoPlayer.userId] = player;
     }
 
     this.controls = createThirdPersonControls(
@@ -202,10 +185,10 @@ export class MainScene extends ResizeableScene3D {
     if (Math.round(this.tick) < 0) this.tick = replayLength;
     else if (Math.round(this.tick) > replayLength - 1) this.tick = 0;
     const tickRounded = Math.round(this.tick);
+    tickCounterCurrentSet(this.replay[tickRounded].tick);
 
     this.controls.update(0, 0);
     Object.values(this.players).forEach((player) => player.update(delta));
-    tickCounterCurrentSet(this.replay[tickRounded].tick);
 
     Object.entries(this.replay[tickRounded].players).forEach(([userId, player]) => {
       if (!player || !this.players[userId]) return;

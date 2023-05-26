@@ -1,5 +1,5 @@
 import { DemoFile, IPlayerInfo } from 'demofile';
-import { loading } from './utils/loader';
+import { loading } from './loader';
 
 export interface Replay {
   tick: number,
@@ -14,7 +14,6 @@ export interface Replay {
 }
 
 export function parseDemofile(demoFileRaw: Buffer): Promise<{players: IPlayerInfo[], replay: Replay[], tickMax: number}> {
-  // let resolved = false;
   return new Promise((resolve) => {
     const demoFile = new DemoFile();
     const players: IPlayerInfo[] = [];
@@ -48,9 +47,6 @@ export function parseDemofile(demoFileRaw: Buffer): Promise<{players: IPlayerInf
 
     demoFile.on('tickend', (tick) => {
       if (tick < 0) return;
-      // if (!resolved) {
-      //   resolved = true;
-      // }
       replay.push({
         tick,
         players: Object.fromEntries(demoFile.players.map(player => ([player.userId, {

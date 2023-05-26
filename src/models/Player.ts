@@ -32,10 +32,11 @@ export class Player extends Entity {
     this.object3d.add(player);
     this.object3d.rotation.set(0, Math.PI * 1.5, 0);
     this.object3d.position.copy(this.startPosition);
-    // add shadow
+
     this.object3d.traverse((child) => {
       if (child.isMesh) {
         child.castShadow = child.receiveShadow = true;
+        child.frustumCulled = false;
       }
     });
 
@@ -51,17 +52,12 @@ export class Player extends Entity {
     // });
     // this.object3d.anims.play('Armature|mixamo.com|Layer0');
 
-    /**
-     * Add the player to the scene with a body
-     */
-    scene.add.existing(this.object3d);
-
     const canvas = document.createElement('canvas');
     canvas.height = 100;
     canvas.width = 500;
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      ctx.fillStyle = '#6a5acd';
+      ctx.fillStyle = Math.random() < 0.5 ? '#fbde1a' : '#55d2fc';
       ctx.font = '50px Calibri, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(name, 250, 70);
@@ -71,8 +67,13 @@ export class Player extends Entity {
 
     this.label = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.2), new THREE.MeshBasicMaterial({ map: texture, transparent: true }));
     this.label.position.copy(new THREE.Vector3(0, 1, 0));
-    this.object3d.add(this.label);
-    this.object3d.frustumCulled = false;
+    this.label.renderOrder = 999;
+    this.label.onBeforeRender = function( renderer ) { renderer.clearDepth(); };
+    this.label.frustumCulled = false;
+
+    this.object3d.add( this.label );
+
+    scene.add.existing(this.object3d);
 
     scene.physics.add.existing(this.object3d, {
       shape: 'capsule',
@@ -89,7 +90,7 @@ export class Player extends Entity {
   }
 
   public update(_delta: number): void {
-    this.label.lookAt(this.scene.camera.position);
+    this.label.lookAt(this.scene.camera.position.x, this.scene.camera.position.y, this.scene.camera.position.z);
   }
 
   teleport(position: THREE.Vector3, rotation: THREE.Euler = new THREE.Euler(), instant = false, setBackToDynamic = false) {

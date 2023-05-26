@@ -1,8 +1,8 @@
-import { type THREE } from 'enable3d';
+// import { type THREE } from 'enable3d';
 import type { MainScene } from '../main';
 
 export default abstract class Entity {
-  abstract readonly object3d: THREE.Object3D;
+  // abstract readonly object3d: THREE.Object3D;
 
   protected constructor(
     protected readonly scene: MainScene,
