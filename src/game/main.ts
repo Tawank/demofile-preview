@@ -9,7 +9,6 @@ import {
   PointerDrag
 } from 'enable3d';
 import ResizeableScene3D from './scenes/ResizeableScene3D';
-import { loading } from './utils/loader';
 import { Player } from './models/Player';
 import { type Replay, parseDemofile } from './utils/parseDemofile';
 import { getRandom } from './utils/random';
@@ -19,6 +18,7 @@ import { keys } from './utils/keyboard';
 import { createThirdPersonControls } from './utils/createThirdpersonControl';
 import GameEvent from './events/GameEvent';
 import { useGameStore } from '../stores/game'
+import { useLoadingStore } from '@/stores/loading';
 
 export class MainScene extends ResizeableScene3D {
 	public readonly events = new GameEvent();
@@ -32,6 +32,7 @@ export class MainScene extends ResizeableScene3D {
   public replay: Replay[] = [];
 
   public gameStore!: ReturnType<typeof useGameStore>;
+  public loadingStore!: ReturnType<typeof useLoadingStore>;
 
   public startPosition: THREE.Vector3 = new THREE.Vector3(-8, 4, 1);
 
@@ -55,8 +56,8 @@ export class MainScene extends ResizeableScene3D {
     super.create();
 
     this.gameStore = useGameStore();
+    this.loadingStore = useLoadingStore();
 
-    loading('Demo File');
     const demoFileFile = (await fetch(
       'assets/demos/match730_003613235383443128481_0129488978_191.dem'
     ).then((response) => response.arrayBuffer())) as Buffer;
@@ -101,10 +102,10 @@ export class MainScene extends ResizeableScene3D {
       });
     };
 
-    loading('Map');
+    this.loadingStore.set('Map', 10);
     await addMap();
 
-    loading('Players');
+    this.loadingStore.set('Players', 50);
 
     for (const demoPlayer of this.demoPlayers) {
       const playerObject = await this.load.gltf(
@@ -130,6 +131,8 @@ export class MainScene extends ResizeableScene3D {
       this.players[demoPlayer.userId] = player;
     }
 
+    this.loadingStore.set('Scene', 70);
+
     this.controls = createThirdPersonControls(
       this.camera,
       Object.values(this.players)[this.focusedPlayer].object3d
@@ -148,6 +151,8 @@ export class MainScene extends ResizeableScene3D {
     });
 
     document.addEventListener('mousedown', (event) => {
+      if (!pl.isLocked()) return;
+
       if (event.button === 0) {
         this.focusedPlayer = (this.focusedPlayer + 1) % Object.keys(this.players).length;
       } else if (event.button === 2) {
@@ -176,7 +181,7 @@ export class MainScene extends ResizeableScene3D {
       this.controls.targetRadius += event.deltaY / 100;
     });
 
-    loading(null);
+    this.loadingStore.set();
   }
 
   update(_time: number, delta: number) {

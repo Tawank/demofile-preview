@@ -1,5 +1,5 @@
 import type * as Plugins from '@enable3d/three-graphics/jsm/plugins';
-import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
+import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
 import { THREE } from 'enable3d';
 import Entity from './Entity';
 import { type MainScene } from '../main';
