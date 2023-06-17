@@ -1,23 +1,32 @@
 import { useLoadingStore } from '@/stores/loading';
 import { DemoFile, type IPlayerInfo } from 'demofile';
 
+export interface DeadPlayer {
+  name: string;
+  teamNumber: number | null;
+}
+
+export interface Death {
+  id: string;
+  victim: DeadPlayer;
+  attacker: DeadPlayer;
+  weapon: string;
+  headshot: boolean;
+  time: number;
+}
+
 export interface Replay {
   tick: number;
   players: {
     [userId: string]: {
       name: string;
+      teamNumber: number;
       position: [number, number, number];
       rotation: [number, number];
       isAlive: boolean;
     };
   };
-  deaths: Array<{
-    victim: string;
-    attacker: string;
-    weapon: string;
-    headshot: boolean;
-    time: number;
-  }>;
+  deaths: Array<Death>;
 }
 
 export function parseDemofile(
@@ -39,13 +48,22 @@ export function parseDemofile(
     demoFile.gameEvents.on('player_death', (e) => {
       const victim = demoFile.entities.getByUserId(e.userid);
       const victimName = victim ? victim.name : 'unnamed';
+      const victimTeam = victim ? victim.teamNumber : null;
 
       const attacker = demoFile.entities.getByUserId(e.attacker);
       const attackerName = attacker ? attacker.name : 'unnamed';
+      const attackerTeam = attacker ? attacker.teamNumber : null;
 
       replay[replay.length - 1].deaths.push({
-        victim: victimName,
-        attacker: attackerName,
+        id: Math.random().toString(36).substring(2, 16),
+        victim: {
+          name: victimName,
+          teamNumber: victimTeam,
+        },
+        attacker: {
+          name: attackerName,
+          teamNumber: attackerTeam,
+        },
         weapon: e.weapon,
         headshot: e.headshot,
         time: 0,
@@ -65,6 +83,7 @@ export function parseDemofile(
             player.userId,
             {
               name: player.name,
+              teamNumber: player.teamNumber,
               position: [player.position.x, player.position.y, player.position.z],
               rotation: [player.eyeAngles.pitch, player.eyeAngles.yaw],
               isAlive: player.isAlive
@@ -72,12 +91,13 @@ export function parseDemofile(
           ])
         ),
         deaths: replay.length === 0 ? [] : replay[replay.length - 1].deaths.map(x => ({
+          id: x.id,
           victim: x.victim,
           attacker: x.attacker,
           weapon: x.weapon,
           headshot: x.headshot,
           time: x.time + 1,
-        })).filter(x => x.time < 100),
+        })).filter(x => x.time < 500),
       });
     });
 

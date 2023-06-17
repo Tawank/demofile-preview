@@ -13,23 +13,27 @@ export class Player extends Entity {
 
   public object3d: ExtendedObject3D;
   public label: THREE.Object3D;
+  public labelTexture: THREE.Texture;
+  public labelCtx: CanvasRenderingContext2D | null;
 
   public isAlive = false;
+  public teamNumber: number | null = null;
 
   constructor(
     protected readonly scene: MainScene,
-    protected readonly object: THREE.Object3D,
+    protected readonly object: {csgoTerro: THREE.Object3D, csgoAnti: THREE.Object3D},
     public readonly name: string,
     public readonly startPosition: THREE.Vector3,
   ) {
     super(scene, name);
-    const player = object;
 
     this.object3d = new ExtendedObject3D();
     this.object3d.name = name;
-    player.scale.set(0.01, 0.01, 0.01);
+    object.csgoAnti.scale.set(0.01, 0.01, 0.01);
+    object.csgoTerro.scale.set(0.01, 0.01, 0.01);
     this.object3d.rotateY(Math.PI + 0.1); // a hack
-    this.object3d.add(player);
+    this.object3d.add(object.csgoTerro);
+    this.object3d.add(object.csgoAnti);
     this.object3d.rotation.set(0, Math.PI * 1.5, 0);
     this.object3d.position.copy(this.startPosition);
 
@@ -56,16 +60,12 @@ export class Player extends Entity {
     canvas.height = 100;
     canvas.width = 500;
     const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = Math.random() < 0.5 ? '#fbde1a' : '#55d2fc';
-      ctx.font = '50px Calibri, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(name, 250, 70);
-    }
-    const texture = new THREE.Texture(canvas);
-    texture.needsUpdate = true;
+    this.labelCtx = ctx;
 
-    this.label = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.2), new THREE.MeshBasicMaterial({ map: texture, transparent: true }));
+    this.labelTexture = new THREE.Texture(canvas);
+    this.labelTexture.needsUpdate = true;
+
+    this.label = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.2), new THREE.MeshBasicMaterial({ map: this.labelTexture, transparent: true }));
     this.label.position.copy(new THREE.Vector3(0, 1, 0));
     this.label.renderOrder = 999;
     this.label.onBeforeRender = function( renderer ) { renderer.clearDepth(); };
@@ -89,8 +89,38 @@ export class Player extends Entity {
     this.object3d.body.setCcdSweptSphereRadius(0.25);
   }
 
+  createLabel(teamNumber: number) {
+    if (this.labelCtx) {
+      if (teamNumber === 2) this.labelCtx.fillStyle = '#fbde1a';
+      else if (teamNumber === 3) this.labelCtx.fillStyle = '#55d2fc';
+      else this.labelCtx.fillStyle = '#ffffff';
+
+      this.labelCtx.font = '50px Calibri, sans-serif';
+      this.labelCtx.textAlign = 'center';
+      this.labelCtx.fillText(this.name, 250, 70);
+      this.labelTexture.needsUpdate = true;
+    }
+  }
+
   public update(_delta: number): void {
     this.label.lookAt(this.scene.camera.position.x, this.scene.camera.position.y, this.scene.camera.position.z);
+  }
+
+  changeTeam(teamNumber: number) {
+    if (this.teamNumber !== teamNumber) {
+      this.createLabel(teamNumber);
+
+      if (teamNumber === 2) {
+        this.object3d.children[0].visible = true;
+        this.object3d.children[1].visible = false;
+      }
+      if (teamNumber === 3) {
+        this.object3d.children[0].visible = false;
+        this.object3d.children[1].visible = true;
+      }
+
+      this.teamNumber = teamNumber;
+    }
   }
 
   teleport(position: THREE.Vector3, rotation: THREE.Euler = new THREE.Euler(), instant = false, setBackToDynamic = false) {

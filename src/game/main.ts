@@ -13,12 +13,12 @@ import { Player } from './models/Player';
 import { type Replay, parseDemofile } from './utils/parseDemofile';
 import { getRandom } from './utils/random';
 import { type IPlayerInfo } from 'demofile';
-import { tickCounterCurrentSet, tickCounterMaxSet } from './utils/tickcouter';
 import { keys } from './utils/keyboard';
 import { createThirdPersonControls } from './utils/createThirdpersonControl';
 import GameEvent from './events/GameEvent';
 import { useGameStore } from '../stores/game'
 import { useLoadingStore } from '@/stores/loading';
+import { modelLoader } from './utils/modelLoader';
 
 export class MainScene extends ResizeableScene3D {
 	public readonly events = new GameEvent();
@@ -45,11 +45,10 @@ export class MainScene extends ResizeableScene3D {
   }
 
   async preload() {
-    const map = this.load.preload('map', '/assets/maps/de_mirage.glb');
     const csgoAnti = this.load.preload('csgo_anti', '/assets/glb/csgo_anti.glb');
     const csgoTerro = this.load.preload('csgo_terrorist', '/assets/glb/csgo_terrorist.glb');
 
-    await Promise.all([map, csgoAnti, csgoTerro]);
+    await Promise.all([csgoAnti, csgoTerro]);
   }
 
   async create() {
@@ -66,11 +65,15 @@ export class MainScene extends ResizeableScene3D {
 
     this.demoPlayers = demoFile.players.filter((demoPlayer) => !demoPlayer.fakePlayer);
     this.replay = demoFile.replay;
-    this.gameStore.maxTick = demoFile.tickMax;
-    tickCounterMaxSet(demoFile.tickMax);
+    this.gameStore.replay = demoFile.replay;
+    this.gameStore.maxTick = demoFile.replay.length - 1;
 
     const addMap = async () => {
-      const object = await this.load.gltf('map');
+      const object = await modelLoader(
+        '/assets/maps/de_mirage.glb',
+        (progress) => this.loadingStore.set('Downloading map', progress.loaded / progress.total * 100)
+      );
+
       const scene = object.scenes[0];
 
       const map = new ExtendedObject3D();
@@ -108,13 +111,12 @@ export class MainScene extends ResizeableScene3D {
     this.loadingStore.set('Players', 50);
 
     for (const demoPlayer of this.demoPlayers) {
-      const playerObject = await this.load.gltf(
-        Math.random() < 0.5 ? 'csgo_anti' : 'csgo_terrorist'
-      );
+      const csgoAnti = await this.load.gltf('csgo_anti');
+      const csgoTerro  = await this.load.gltf('csgo_terrorist');
 
       const player = new Player(
         this,
-        playerObject.scene.children[0],
+        {csgoAnti: csgoAnti.scene.children[0], csgoTerro: csgoTerro.scene.children[0]},
         demoPlayer.name,
         this.startPosition.add(
           new THREE.Vector3(getRandom(-2, 2), getRandom(-2, 2), getRandom(-2, 2))
@@ -187,9 +189,11 @@ export class MainScene extends ResizeableScene3D {
   update(_time: number, delta: number) {
     const replayLength = this.replay.length - 1;
     if (Math.round(this.gameStore.tick) < 0) this.gameStore.tick = replayLength;
-    else if (Math.round(this.gameStore.tick) > replayLength - 1) this.gameStore.tick = 0;
+    else if (Math.round(this.gameStore.tick) > replayLength - 5) this.gameStore.tick = replayLength - 10;
     const tickRounded = Math.round(this.gameStore.tick);
-    tickCounterCurrentSet(this.replay[tickRounded].tick);
+    if (this.gameStore.tickRounded !== tickRounded) {
+      this.gameStore.tickRounded = tickRounded;
+    }
 
     this.controls.update(0, 0);
     Object.values(this.players).forEach((player) => player.update(delta));
@@ -212,6 +216,7 @@ export class MainScene extends ResizeableScene3D {
           new THREE.Euler(...rotation),
           !player.isAlive
         );
+        this.players[userId].changeTeam(player.teamNumber);
       }
     });
 
