@@ -216,12 +216,12 @@ export class MainScene extends ResizeableScene3D {
           new THREE.Euler(...rotation),
           !player.isAlive
         );
-        this.players[userId].changeTeam(player.teamNumber);
+        this.players[userId].updatePlayerInfo(player);
       }
     });
 
     if (this.gameStore.started) {
-      this.gameStore.tick += delta / 20;
+      this.gameStore.tick += delta / 16 / 2;
     }
 
     if (keys.arrowLeft.isDown) {

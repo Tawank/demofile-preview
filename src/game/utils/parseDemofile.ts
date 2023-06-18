@@ -14,19 +14,26 @@ export interface Death {
   headshot: boolean;
   time: number;
 }
+export interface ReplayPlayerInfo {
+  name: string;
+  teamNumber: number;
+  health: number;
+  armor: number;
+  position: [number, number, number];
+  rotation: [number, number];
+  isAlive: boolean;
+}
 
 export interface Replay {
   tick: number;
   players: {
-    [userId: string]: {
-      name: string;
-      teamNumber: number;
-      position: [number, number, number];
-      rotation: [number, number];
-      isAlive: boolean;
-    };
+    [userId: string]: ReplayPlayerInfo;
   };
   deaths: Array<Death>;
+  round: {
+    time: number;
+    freeze: boolean;
+  }
 }
 
 export function parseDemofile(
@@ -70,12 +77,17 @@ export function parseDemofile(
       });
     });
 
-    demoFile.gameEvents.on('round_end', (e) => {
-      console.log(`[${e.winner}] reason: ${e.reason} players left: ${e.player_count}`);
+    demoFile.gameEvents.on('round_start', (e) => {
+      replay[replay.length - 1].round.time = e.timelimit;
+      replay[replay.length - 1].round.freeze = true;
+    });
+    demoFile.gameEvents.on('round_freeze_end', () => {
+      replay[replay.length - 1].round.freeze = false;
     });
 
     demoFile.on('tickend', (tick) => {
       if (tick < 0) return;
+      const lastReplay = replay[replay.length - 1];
       replay.push({
         tick,
         players: Object.fromEntries(
@@ -83,6 +95,8 @@ export function parseDemofile(
             player.userId,
             {
               name: player.name,
+              health: player.health,
+              armor: player.armor,
               teamNumber: player.teamNumber,
               position: [player.position.x, player.position.y, player.position.z],
               rotation: [player.eyeAngles.pitch, player.eyeAngles.yaw],
@@ -90,7 +104,7 @@ export function parseDemofile(
             }
           ])
         ),
-        deaths: replay.length === 0 ? [] : replay[replay.length - 1].deaths.map(x => ({
+        deaths: replay.length === 0 ? [] : lastReplay.deaths.map(x => ({
           id: x.id,
           victim: x.victim,
           attacker: x.attacker,
@@ -98,6 +112,10 @@ export function parseDemofile(
           headshot: x.headshot,
           time: x.time + 1,
         })).filter(x => x.time < 500),
+        round: {
+          time: replay.length === 0 ? 0 : lastReplay.round.time - (lastReplay.round.freeze ? 0 : 1/32),
+          freeze: replay.length === 0 ? true : lastReplay.round.freeze,
+        },
       });
     });
 

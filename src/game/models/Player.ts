@@ -5,6 +5,7 @@ import {
   THREE,
   ExtendedObject3D,
 } from 'enable3d';
+import type { ReplayPlayerInfo } from '../utils/parseDemofile';
 
 export class Player extends Entity {
 	static async loadModel(loader: Plugins.Loaders, url: string) {
@@ -14,6 +15,7 @@ export class Player extends Entity {
   public object3d: ExtendedObject3D;
   public label: THREE.Object3D;
   public labelTexture: THREE.Texture;
+  public labelCanvas: HTMLCanvasElement  | null;
   public labelCtx: CanvasRenderingContext2D | null;
 
   public isAlive = false;
@@ -56,14 +58,14 @@ export class Player extends Entity {
     // });
     // this.object3d.anims.play('Armature|mixamo.com|Layer0');
 
-    const canvas = document.createElement('canvas');
-    canvas.height = 100;
-    canvas.width = 500;
-    const ctx = canvas.getContext('2d');
-    this.labelCtx = ctx;
+    this.labelCanvas = document.createElement('canvas');
+    this.labelCanvas.height = 100;
+    this.labelCanvas.width = 500;
+    
+    this.labelCtx = this.labelCanvas.getContext('2d');
 
-    this.labelTexture = new THREE.Texture(canvas);
-    this.labelTexture.needsUpdate = true;
+    this.labelTexture = new THREE.Texture(this.labelCanvas);
+    this.createLabel();
 
     this.label = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.2), new THREE.MeshBasicMaterial({ map: this.labelTexture, transparent: true }));
     this.label.position.copy(new THREE.Vector3(0, 1, 0));
@@ -89,15 +91,21 @@ export class Player extends Entity {
     this.object3d.body.setCcdSweptSphereRadius(0.25);
   }
 
-  createLabel(teamNumber: number) {
+  createLabel(player?: ReplayPlayerInfo) {
     if (this.labelCtx) {
-      if (teamNumber === 2) this.labelCtx.fillStyle = '#fbde1a';
-      else if (teamNumber === 3) this.labelCtx.fillStyle = '#55d2fc';
+      if (this.labelCanvas) {
+        this.labelCanvas.width += 0;
+      }
+
+      if (player?.teamNumber === 2) this.labelCtx.fillStyle = '#fbde1a';
+      else if (player?.teamNumber === 3) this.labelCtx.fillStyle = '#55d2fc';
       else this.labelCtx.fillStyle = '#ffffff';
 
       this.labelCtx.font = '50px Calibri, sans-serif';
       this.labelCtx.textAlign = 'center';
       this.labelCtx.fillText(this.name, 250, 70);
+      this.labelCtx.font = '35px Calibri, sans-serif';
+      this.labelCtx.fillText(`${player?.health || ''} ${player?.armor || ''}`, 250, 95);
       this.labelTexture.needsUpdate = true;
     }
   }
@@ -106,20 +114,20 @@ export class Player extends Entity {
     this.label.lookAt(this.scene.camera.position.x, this.scene.camera.position.y, this.scene.camera.position.z);
   }
 
-  changeTeam(teamNumber: number) {
-    if (this.teamNumber !== teamNumber) {
-      this.createLabel(teamNumber);
+  updatePlayerInfo(player: ReplayPlayerInfo) {
+    this.createLabel(player);
 
-      if (teamNumber === 2) {
+    if (this.teamNumber !== player.teamNumber) {
+      if (player.teamNumber === 2) {
         this.object3d.children[0].visible = true;
         this.object3d.children[1].visible = false;
       }
-      if (teamNumber === 3) {
+      if (player.teamNumber === 3) {
         this.object3d.children[0].visible = false;
         this.object3d.children[1].visible = true;
       }
 
-      this.teamNumber = teamNumber;
+      this.teamNumber = player.teamNumber;
     }
   }
 

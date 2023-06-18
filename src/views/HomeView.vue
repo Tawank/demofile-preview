@@ -47,9 +47,14 @@
         @input="() => {stateBeforeDrag = gameStore.started; gameStore.started = false}"
         @change="() => gameStore.started = stateBeforeDrag"
       />
-      {{ gameStore.tick.toFixed(0) }}
-      /
-      {{ gameStore.maxTick }}
+      <div>
+        {{ gameStore.tick.toFixed(0) }}
+        /
+        {{ gameStore.maxTick }}
+      </div>
+      <div>
+        {{ time }}
+      </div>
     </div>
     <canvas ref="canvas" class="game-canvas" />
   </div>
@@ -66,8 +71,9 @@ const canvas: Ref<HTMLCanvasElement | undefined> = ref();
 
 const gameStore = useGameStore();
 const loadingStore = useLoadingStore();
-const stateBeforeDrag = false;
+let stateBeforeDrag = false;
 const deaths = ref<Death[]>([]);
+const time = ref<string>('0:00');
 
 onMounted(async () => {
   if (canvas.value) {
@@ -79,6 +85,7 @@ onMounted(async () => {
 
 watch(() => gameStore.tickRounded, async (newTick) => {
   deaths.value = gameStore.replay[newTick].deaths;
+  time.value = new Date(gameStore.replay[newTick].round.time * 1000).toISOString().substring(14, 19);
 });
 
 function teamColor(teamNumber: unknown): string | undefined {
